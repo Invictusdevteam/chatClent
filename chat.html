@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Chat - App</title>
+        <style>
+            body {
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                background: #f0f2f5;
+                margin: 0;
+                height: 100vh;
+                display: flex;
+            }
+
+            /* Sidebar Style */
+            .sidebar {
+                width: 300px;
+                background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            }
+
+            .my-profile {
+                padding: 20px;
+                background: rgba(255, 255, 255, 0.1);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            }
+
+            .my-profile h3 {
+                margin: 0;
+                font-size: 18px;
+                font-weight: bold;
+                color: white;
+            }
+
+            .user-list-container {
+                flex: 1;
+                overflow-y: auto;
+            }
+
+            .user-list-header {
+                padding: 15px 20px 5px;
+                font-size: 13px;
+                opacity: 0.7;
+            }
+
+            .user-item {
+                padding: 15px 20px;
+                cursor: pointer;
+                transition: background 0.3s;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .user-item:hover {
+                background: rgba(255, 255, 255, 0.15);
+            }
+
+            .user-avatar {
+                width: 35px;
+                height: 35px;
+                background: white;
+                color: #764ba2;
+                border-radius: 50%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                font-weight: bold;
+            }
+
+            .badge {
+                background-color: #ff4d4d;
+                color: white;
+                border-radius: 10px;
+                padding: 2px 8px;
+                font-size: 11px;
+                font-weight: bold;
+                margin-left: auto;
+                display: none;
+            }
+
+            /* Chat Main Area */
+            .chat-main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+            }
+
+            .chat-header {
+                padding: 20px;
+                border-bottom: 1px solid #ddd;
+                background: white;
+            }
+
+            .messages-container {
+                flex: 1;
+                padding: 20px;
+                overflow-y: auto;
+                background: #e5ddd5; /* WhatsApp style background color */
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .message {
+                max-width: 60%;
+                padding: 10px 15px;
+                border-radius: 10px;
+                font-size: 15px;
+                line-height: 1.4;
+            }
+
+            .message.received {
+                align-self: flex-start;
+                background: white;
+            }
+
+            .message.sent {
+                align-self: flex-end;
+                background: #dcf8c6;
+            }
+
+            .chat-input-area {
+                padding: 20px;
+                background: #f0f0f0;
+                display: flex;
+                gap: 10px;
+            }
+
+            input#messageInput {
+                flex: 1;
+                padding: 12px;
+                border: 1px solid #ddd;
+                border-radius: 25px;
+                outline: none;
+            }
+
+            button#sendBtn {
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 0 25px;
+                border-radius: 25px;
+                cursor: pointer;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="sidebar">
+            <div class="my-profile">
+                <h3 id="currentUserDisplay">Men: ...</h3>
+            </div>
+            <div class="user-list-header">FOYDALANUVCHILAR</div>
+            <div id="userList" class="user-list-container">
+                <!-- Userlar shu yerga chiqadi -->
+            </div>
+        </div>
+
+        <div class="chat-main">
+            <div class="chat-header">
+                <h2 id="chatWithTitle">
+                    Chatni boshlash uchun foydalanuvchini tanlang
+                </h2>
+            </div>
+            <div class="messages-container" id="messages">
+                <!-- Xabarlar shu yerga chiqadi -->
+            </div>
+            <div class="chat-input-area">
+                <input
+                    type="text"
+                    id="messageInput"
+                    placeholder="Xabar yozing..."
+                />
+                <button id="sendBtn">Yuborish</button>
+            </div>
+        </div>
+
+        <!-- Socket.io client kutubxonasi -->
+        <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+        <script>
+            const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+            let selectedUserId = null;
+            const socket = io("http://localhost:5000");
+
+            if (!currentUser) {
+                window.location.href = "login.html";
+            }
+
+            // Serverga ulanish va o'zini tanishtirish
+            socket.on("connect", () => {
+                console.log("Serverga ulandik:", socket.id);
+                socket.emit("user:join", currentUser.id);
+            });
+
+            document.getElementById("currentUserDisplay").textContent =
+                `Men: ${currentUser.username}`;
+
+            async function fetchUsers() {
+                try {
+                    const response = await fetch("http://localhost:5000/users");
+                    const users = await response.json();
+                    const userListDiv = document.getElementById("userList");
+
+                    // Izoh: "Faqat yozishgan userlar" qismini chiqarish uchun backendda maxsus endpoint bo'lmasa,
+                    // hozircha barcha userlarni chiqaramiz, lekin tanlanganda xabarlarni yuklaymiz.
+
+                    userListDiv.innerHTML = "";
+                    users.forEach((user) => {
+                        if (user.id !== currentUser.id) {
+                            const userItem = document.createElement("div");
+                            userItem.className = "user-item";
+                            userItem.dataset.id = user.id;
+                            userItem.innerHTML = `
+                            <div class="user-avatar">${user.username[0].toUpperCase()}</div>
+                            <span>${user.username}</span>
+                            <span class="badge"></span>
+                        `;
+                            userItem.onclick = () => {
+                                selectUser(user);
+                            };
+                            userListDiv.appendChild(userItem);
+                        }
+                    });
+                } catch (error) {
+                    console.error("Userlarni yuklashda xato:", error);
+                }
+            }
+
+            async function selectUser(user) {
+                selectedUserId = user.id;
+                document.getElementById("chatWithTitle").textContent =
+                    user.username + " bilan chat";
+
+                // Badgeni (bildirishnomani) tozalash
+                const userItem = document.querySelector(
+                    `.user-item[data-id="${user.id}"]`,
+                );
+                if (userItem) {
+                    const badge = userItem.querySelector(".badge");
+                    badge.textContent = "";
+                    badge.style.display = "none";
+                }
+
+                loadMessages(user.id);
+            }
+
+            async function loadMessages(targetUserId) {
+                try {
+                    const response = await fetch(
+                        `http://localhost:5000/messages/${currentUser.id}/${targetUserId}`,
+                    );
+                    const messages = await response.json();
+                    renderMessages(messages);
+                } catch (error) {
+                    console.error("Xabarlarni yuklashda xato:", error);
+                }
+            }
+
+            // Yangi xabar kelganda (Real-time)
+            socket.on("message:receive", (msg) => {
+                // Agar xabar hozirgi ochiq turgan chatdan bo'lsa, ekranga chiqaramiz
+                if (msg.sender_id === selectedUserId) {
+                    addSingleMessage(msg, "received");
+                } else {
+                    // Badge ko'rsatish (Bildirishnoma)
+                    const userItem = document.querySelector(
+                        `.user-item[data-id="${msg.sender_id}"]`,
+                    );
+                    if (userItem) {
+                        const badge = userItem.querySelector(".badge");
+                        let count = parseInt(badge.textContent) || 0;
+                        badge.textContent = count + 1;
+                        badge.style.display = "block";
+                        console.log("Yangi xabar keldi:", msg.sender_username);
+                    }
+                }
+            });
+
+            // O'zimiz yuborgan xabar muvaffaqiyatli saqlanganda
+            socket.on("message:sent", (msg) => {
+                if (msg.receiver_id === selectedUserId) {
+                    addSingleMessage(msg, "sent");
+                }
+            });
+
+            function renderMessages(messages) {
+                const messagesDiv = document.getElementById("messages");
+                messagesDiv.innerHTML = "";
+
+                messages.forEach((msg) => {
+                    const type =
+                        msg.sender_id === currentUser.id ? "sent" : "received";
+                    addSingleMessage(msg, type);
+                });
+            }
+
+            function addSingleMessage(msg, type) {
+                const messagesDiv = document.getElementById("messages");
+                const msgEl = document.createElement("div");
+                msgEl.className = `message ${type}`;
+                // Serverdan 'message' maydonida keladi
+                msgEl.textContent = msg.message;
+                messagesDiv.appendChild(msgEl);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+
+            // Xabar yuborish
+            function sendMessage() {
+                const input = document.getElementById("messageInput");
+                const messageText = input.value.trim();
+
+                if (messageText && selectedUserId) {
+                    socket.emit("message:send", {
+                        senderId: currentUser.id,
+                        receiverId: selectedUserId,
+                        message: messageText,
+                    });
+                    input.value = "";
+                }
+            }
+
+            document.getElementById("sendBtn").onclick = sendMessage;
+            document.getElementById("messageInput").onkeypress = (e) => {
+                if (e.key === "Enter") sendMessage();
+            };
+
+            fetchUsers();
+        </script>
+    </body>
+</html>

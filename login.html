@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Login - Chat App</title>
+        <style>
+            body {
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                margin: 0;
+            }
+            .login-card {
+                background: white;
+                padding: 2rem;
+                border-radius: 12px;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+                width: 100%;
+                max-width: 350px;
+                text-align: center;
+            }
+            h2 {
+                color: #333;
+                margin-bottom: 1.5rem;
+            }
+            input {
+                width: 100%;
+                padding: 12px;
+                margin-bottom: 1rem;
+                border: 2px solid #ddd;
+                border-radius: 6px;
+                box-sizing: border-box;
+                outline: none;
+                transition: border-color 0.3s;
+            }
+            input:focus {
+                border-color: #667eea;
+            }
+            button {
+                width: 100%;
+                padding: 12px;
+                background-color: #667eea;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: bold;
+                transition: background 0.3s;
+            }
+            button:hover {
+                background-color: #5a67d8;
+            }
+            #error-message {
+                color: #e53e3e;
+                margin-top: 1rem;
+                font-size: 14px;
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="login-card">
+            <h2>Xush kelibsiz</h2>
+            <form id="loginForm">
+                <input
+                    type="text"
+                    id="username"
+                    placeholder="Usernameingizni kiriting"
+                    required
+                />
+                <button type="submit">Kirish</button>
+            </form>
+            <div id="error-message">Username xato!</div>
+        </div>
+
+        <script>
+            document
+                .getElementById("loginForm")
+                .addEventListener("submit", async (e) => {
+                    e.preventDefault();
+                    const username = document
+                        .getElementById("username")
+                        .value.trim();
+                    const errorDiv = document.getElementById("error-message");
+
+                    try {
+                        const response = await fetch(
+                            "http://localhost:5000/users",
+                        );
+                        const users = await response.json();
+
+                        const user = users.find((u) => u.username === username);
+
+                        if (user) {
+                            // Muvaffaqiyatli bo'lsa chat.html ga o'tish
+                            window.location.href = "chat.html";
+                        } else {
+                            errorDiv.style.display = "block";
+                            errorDiv.textContent = "Username xato!";
+                        }
+                    } catch (error) {
+                        console.error("Xatolik:", error);
+                        errorDiv.style.display = "block";
+                        errorDiv.textContent = "Serverga ulanishda xatolik!";
+                    }
+                });
+        </script>
+    </body>
+</html>
